@@ -4,7 +4,7 @@
 
 👉 **[Launch Hybridizer Live](https://billtribble.github.io/hybridizer/)** · **[Design & Creative Technology Portfolio](https://billtribble.com/design)**
 
-[![Hybridizer Cover](https://billtribble.github.io/hybridizer/cover.png)](https://billtribble.github.io/hybridizer/)
+[![Hybridizer Cover](./cover.png)](https://billtribble.github.io/hybridizer/)
 
 ## Features
 - **3D Procedural Botanical Growth & Cross-Breeding**: Hold to cross-pollinate parent specimens across generations with real-time 3D WebGL2 geometry and shaders.
