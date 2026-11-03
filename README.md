@@ -1,6 +1,6 @@
 # Hybridizer
 
-**Botanical hybridisation and procedural plant breeding study.**
+**Botanical hybridisation and procedural plant breeding study**
 
 👉 **[Launch Hybridizer Live](https://billtribble.github.io/hybridizer/)** · **[Design & Creative Technology Portfolio](https://billtribble.com/design)**
 
