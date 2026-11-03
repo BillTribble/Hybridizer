@@ -503,52 +503,6 @@ function createSlot(index, createSketchFn, slotEl) {
   let lastW = 0, lastH = 0, lastRatio = 0;
   let currentSpecimen = null;
 
-  // 3D rotation & interactive drag state
-  let rotY = 0;
-  let rotX = 0;
-  let velY = 0;
-  let velX = 0;
-  let isDragging = false;
-  let lastDragX = 0;
-  let lastDragY = 0;
-  const AMBIENT_SPEED = 0.14; // rad/s slow continuous rotation around botanical axis
-
-  // Setup pointer/touch drag event listeners
-  slotEl.addEventListener('pointerdown', (e) => {
-    isDragging = true;
-    slotEl.setPointerCapture(e.pointerId);
-    lastDragX = e.clientX;
-    lastDragY = e.clientY;
-    velY = 0;
-    velX = 0;
-  });
-
-  slotEl.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - lastDragX;
-    const dy = e.clientY - lastDragY;
-    lastDragX = e.clientX;
-    lastDragY = e.clientY;
-
-    rotY += dx * 0.012;
-    rotX = Math.max(-0.55, Math.min(0.55, rotX - dy * 0.01));
-    velY = dx * 0.012;
-    velX = -dy * 0.01;
-  });
-
-  const onPointerUp = (e) => {
-    if (isDragging) {
-      isDragging = false;
-      try {
-        slotEl.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // pointer capture already lost
-      }
-    }
-  };
-  slotEl.addEventListener('pointerup', onPointerUp);
-  slotEl.addEventListener('pointercancel', onPointerUp);
-
   function resizeIfNeeded() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cw = slotEl.clientWidth || canvas.clientWidth || Math.round(window.innerWidth / 3);
@@ -601,23 +555,10 @@ function createSlot(index, createSketchFn, slotEl) {
   /**
    * Snap immediately to full adult `specimen` (used when Left slot receives the shifted Middle hybrid).
    */
-  function snapAdult(specimen, roleText, sceneTime, realTime, fromSlot = null) {
+  function snapAdult(specimen, roleText, sceneTime, realTime) {
     currentSpecimen = specimen;
     setLabels(specimen, roleText);
-    if (fromSlot && typeof fromSlot.getRotation === 'function') {
-      const r = fromSlot.getRotation();
-      rotY = r.rotY;
-      rotX = r.rotX;
-      velY = r.velY;
-      velX = r.velX;
-    }
-    if (instance.setRotation3D) {
-      instance.setRotation3D(rotY, rotX);
-    }
-    const degY = Math.sin(rotY) * 20;
-    const degX = (rotX * 180 / Math.PI);
-    canvas.style.transform = `perspective(900px) rotateY(${degY.toFixed(2)}deg) rotateX(${degX.toFixed(2)}deg)`;
-    canvas.style.transformOrigin = 'center 50%';
+    canvas.style.transform = '';
     store.applyValues(specimen.values, 0, false, false);
     instance.morph(0, '');
     resizeIfNeeded();
@@ -649,26 +590,6 @@ function createSlot(index, createSketchFn, slotEl) {
   function frame(sceneTime, sdt, realTime, dt) {
     store.tick(dt);
     resizeIfNeeded();
-
-    // 3D rotation animation & inertia
-    if (!isDragging) {
-      rotY += AMBIENT_SPEED * dt + velY;
-      velY *= 0.93; // damping
-      rotX += velX;
-      velX *= 0.93;
-      rotX *= 0.97; // gentle return to neutral upright pitch
-    }
-
-    // Pass 3D rotation into Jack's sprig engine for per-leaf 3D phyllotactic revolution & foreshortening,
-    // plus a bounded 3D perspective tilt on the canvas so it never turns edge-on into a 1px line.
-    if (instance.setRotation3D) {
-      instance.setRotation3D(rotY, rotX);
-    }
-    const degY = Math.sin(rotY) * 20;
-    const degX = (rotX * 180 / Math.PI);
-    canvas.style.transform = `perspective(900px) rotateY(${degY.toFixed(2)}deg) rotateX(${degX.toFixed(2)}deg)`;
-    canvas.style.transformOrigin = 'center 50%';
-
     instance.frame(sceneTime, sdt, realTime, dt);
   }
 
@@ -681,9 +602,6 @@ function createSlot(index, createSketchFn, slotEl) {
     instance,
     get specimen() {
       return currentSpecimen;
-    },
-    getRotation() {
-      return { rotY, rotX, velY, velX };
     },
     startGrow,
     snapAdult,
@@ -798,10 +716,10 @@ export function boot() {
 
   function enterGrowNewRight() {
     // Handoff: Middle hybrid is now at the Left slot's exact position.
-    // Snap Left slot to the Hybrid specimen at 100% maturity and matching 3D rotation, and clear Middle slot back to center.
+    // Snap Left slot to the Hybrid specimen at 100% maturity and clear Middle slot back to center.
     leftSpec = midSpec;
     midSpec = null;
-    slotLeft.snapAdult(leftSpec, `${leftSpec.shortName} · Parent A`, sceneTime, realTime, slotMid);
+    slotLeft.snapAdult(leftSpec, `${leftSpec.shortName} · Parent A`, sceneTime, realTime);
     slotMid.clearSlot(true);
 
     // Pick a new random species for the Right slot and grow it

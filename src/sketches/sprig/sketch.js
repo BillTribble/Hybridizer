@@ -403,22 +403,17 @@ export default function create({ canvas, P, model, degrade }) {
   // attaches by its presence (so it grows from the stem) and swayed by angle th about the
   // same point. Into pa…pd (column-major mat2), px, py.
   let pa = 1, pb = 0, pc = 0, pd = 1, px = 0, py = 0;
-  let rot3dY = 0, rot3dX = 0;
-  function placed(p, th, az3d = 0) {
+  function placed(p, th) {
     const o = p * 8, lv = geo.sprigPlace[o];
     const qa = geo.sprigPlace[o + 1], qb = geo.sprigPlace[o + 2], qc = geo.sprigPlace[o + 3], qd = geo.sprigPlace[o + 4];
     const qx = geo.sprigPlace[o + 5], qy = geo.sprigPlace[o + 6], pres = geo.sprigPlace[o + 7] * leafGrow;
     const ax = geo.leafAttach[lv * 3], ay = geo.leafAttach[lv * 3 + 1];
     const nx = qa * ax + qc * ay + qx, ny = qb * ax + qd * ay + qy; // the node
-    const c = Math.cos(th), s = Math.sin(th);
-    // Subtle 3D foreshortening as the leaf revolves around the stem axis (az3d)
-    const fshY = 1 - 0.16 * (1 - Math.cos(az3d)) * 0.5;
-    const fshX = Math.cos(rot3dX * 0.35);
-    const sx = pres * fshX, sy = pres * fshY;
-    // Q' = R · diag(sx, sy)·Q;  q' = N + R · diag(sx, sy)·(q − N)
-    pa = sx * (c * qa - s * qb); pb = sy * (s * qa + c * qb);
-    pc = sx * (c * qc - s * qd); pd = sy * (s * qc + c * qd);
-    const dx = sx * (qx - nx), dy = sy * (qy - ny);
+    const c = Math.cos(th) * pres, s = Math.sin(th) * pres;
+    // Q' = (pres·R)·Q;  q' = N + (pres·R)·(q − N)
+    pa = c * qa - s * qb; pb = s * qa + c * qb;
+    pc = c * qc - s * qd; pd = s * qc + c * qd;
+    const dx = qx - nx, dy = qy - ny;
     px = nx + c * dx - s * dy; py = ny + s * dx + c * dy;
   }
   function grow(x, y) {
@@ -450,9 +445,9 @@ export default function create({ canvas, P, model, degrade }) {
     const sc = (P.scale ? P.scale.value : 0.82) * Math.min(availW / targetW, availH / targetH);
     const cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
     const centerY = topPad + availH / 2;
-    // Sway + 3D rotation: the whole sprig rocks gently about its base, each leaf about its node.
+    // Sway: the whole sprig rocks gently about its base, each leaf about its node.
     const sw = P.sway.value, f = P.swaySpeed.value * 6.2831853;
-    const ths = sw * 0.035 * (Math.sin(f * 0.6 * t) + 0.4 * Math.sin(f * 0.37 * t + 1.3)) + 0.04 * Math.sin(rot3dY);
+    const ths = sw * 0.035 * (Math.sin(f * 0.6 * t) + 0.4 * Math.sin(f * 0.37 * t + 1.3));
     // m = R(−90°) · sc · R(ths), about the stem's base (sprig origin): leaf +x points up.
     const cs = Math.cos(ths), sn = Math.sin(ths);
     const m00 = sc * sn, m10 = -sc * cs, m01 = sc * cs, m11 = sc * sn;
@@ -463,10 +458,8 @@ export default function create({ canvas, P, model, degrade }) {
     instTotal = 1 + geo.sprigNPlace[0];
     for (let p = 0; p < geo.sprigNPlace[0]; p++) {
       const ph = p * 2.39996; // golden angle: neighbours out of step
-      const az3d = ph + rot3dY;
-      const th = sw * 0.09 * (Math.sin(f * t + ph) + 0.5 * Math.sin(f * 1.73 * t + ph * 1.7))
-        + 0.14 * Math.sin(az3d) + 0.08 * rot3dX * Math.cos(ph);
-      placed(p, th, az3d);
+      const th = sw * 0.09 * (Math.sin(f * t + ph) + 0.5 * Math.sin(f * 1.73 * t + ph * 1.7));
+      placed(p, th);
       // world = m · (Q' · v + q') + t
       putInst(1 + p,
         m00 * pa + m01 * pb, m10 * pa + m11 * pb, m00 * pc + m01 * pd, m10 * pc + m11 * pd,
@@ -584,13 +577,6 @@ export default function create({ canvas, P, model, degrade }) {
 
   return {
     resize(_w, _h, px) { fPx = px; needsDraw = true; },
-    setRotation3D(ry, rx) {
-      if (ry !== rot3dY || rx !== rot3dX) {
-        rot3dY = ry;
-        rot3dX = rx;
-        needsDraw = true;
-      }
-    },
     getBounds() {
       return {
         box: Array.from(box),
